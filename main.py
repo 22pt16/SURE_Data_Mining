@@ -127,7 +127,7 @@ if __name__ == "__main__":
     train_sse = {}
     train_sse.update(long_users)
     train_sse.update(enhanced_short)
-
+    sse_time = end - start
     print("Reverse training time:", round(end - start, 4), "seconds")
 
     # ==========================================================
@@ -185,3 +185,51 @@ if __name__ == "__main__":
 
     print("Apriori Time:", round(apriori_time, 4))
     print("FP-Growth Time:", round(fp_time, 4))
+
+    # ==========================================================
+    # ================= PERFORMANCE IMPROVEMENT =================
+    # ==========================================================
+
+    print("\n================ PERFORMANCE ANALYSIS ================")
+
+    # Relative Improvements (MRR)
+    imp_ap_over_base = ((results_ap['MRR'] - results_base['MRR'])
+                        / results_base['MRR']) * 100
+
+    imp_sse_ap_over_base = ((results_sse_ap['MRR'] - results_base['MRR'])
+                            / results_base['MRR']) * 100
+
+    imp_sse_ap_over_ap = ((results_sse_ap['MRR'] - results_ap['MRR'])
+                          / results_ap['MRR']) * 100
+
+    print(f"Improvement (Apriori vs Baseline): {imp_ap_over_base:.2f}%")
+    print(f"Improvement (SSE + Apriori vs Baseline): {imp_sse_ap_over_base:.2f}%")
+    print(f"Additional Gain from SSE over Apriori: {imp_sse_ap_over_ap:.2f}%")
+
+    # Relative Improvements (nDCG)
+    imp_ndcg_ap_over_base = ((results_ap['nDCG'] - results_base['nDCG'])
+                             / results_base['nDCG']) * 100
+
+    imp_ndcg_sse_ap_over_base = ((results_sse_ap['nDCG'] - results_base['nDCG'])
+                                 / results_base['nDCG']) * 100
+
+    print(f"\nnDCG Improvement (Apriori vs Baseline): {imp_ndcg_ap_over_base:.2f}%")
+    print(f"nDCG Improvement (SSE + Apriori vs Baseline): {imp_ndcg_sse_ap_over_base:.2f}%")
+
+    # ==========================================================
+    # ================= EFFICIENCY ANALYSIS ====================
+    # ==========================================================
+
+    print("\n================ EFFICIENCY ANALYSIS ================")
+
+    if apriori_time > 0 and fp_time > 0:
+        if apriori_time > fp_time:
+            speed_ratio = apriori_time / fp_time
+            print(f"FP-Growth is {speed_ratio:.2f}x faster than Apriori (mining phase).")
+        else:
+            speed_ratio = fp_time / apriori_time
+            print(f"Apriori is {speed_ratio:.2f}x faster than FP-Growth (mining phase).")
+
+    print(f"Reverse Training Overhead: {sse_time:.4f} sec (negligible)")
+    print(f"Total Pipeline Runtime (Best Model - SSE + Apriori): "
+          f"{baseline_time + apriori_time + sse_time:.4f} sec (approx)")

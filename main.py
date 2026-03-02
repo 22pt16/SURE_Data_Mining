@@ -10,10 +10,15 @@ from src.arm_filter import (
 from src.recommender import train_bigram
 from src.evaluation import evaluate
 
-import pandas as pd
+import numpy as np
 
 
 def simple_leave_one_out(df):
+    """
+    Temporary split for Person 2 branch.
+    Last interaction → test
+    Remaining → train
+    """
 
     train = {}
     test = {}
@@ -37,49 +42,101 @@ if __name__ == "__main__":
     raw_path = "data/raw/u.data"
     processed_path = "data/processed/processed.csv"
 
+    print("\n===== LOADING & PREPROCESSING =====")
     df = load_and_preprocess(raw_path, processed_path)
 
-    train, test = simple_leave_one_out(df)
+    print("Total users:", df["user_id"].nunique())
+    print("Total items:", df["item_id"].nunique())
 
-    # Extract uninteresting items
+    # ----------------------------
+    # Train/Test Split
+    # ----------------------------
+    train, test = simple_leave_one_out(df)
+    print("Users after split:", len(train))
+
+    # ----------------------------
+    # BASELINE (NO FILTERING)
+    # ----------------------------
+    print("\n===== BASELINE (NO FILTERING) =====")
+
+    baseline_transitions = train_bigram(train)
+    baseline_results = evaluate(baseline_transitions, test, train)
+
+    print("Baseline Results:", baseline_results)
+
+    # ----------------------------
+    # Build Transactions
+    # ----------------------------
     unf_dict = extract_uninteresting(df)
     transactions = build_transactions(unf_dict)
 
+    print("Total uninteresting transactions:", len(transactions))
+
+    # ==========================================================
+    # ===================== APRIORI ============================
+    # ==========================================================
     print("\n===== APRIORI =====")
-    apriori_rules, apriori_time = run_apriori(transactions, min_support=0.01)
-    print("Apriori Time:", apriori_time)
+
+    apriori_rules, apriori_time = run_apriori(
+        transactions,
+        min_support=0.01,
+        min_conf=0.3
+    )
 
     if apriori_rules is not None:
         apriori_remove = get_items_to_remove(apriori_rules)
-        print("Apriori Items Removed:", len(apriori_remove))
     else:
         apriori_remove = set()
-        print("Apriori found no rules.")
-    
-    print("\n===== RECOMMENDATION WITH APRIORI FILTERING =====")
-    filtered_train = filter_sequences(train, apriori_remove)
-    transitions = train_bigram(filtered_train)
-    results = evaluate(transitions, test, filtered_train)
 
+    print("Apriori Time:", round(apriori_time, 4), "seconds")
+    print("Apriori Items Removed:", len(apriori_remove))
 
+    filtered_train_ap = filter_sequences(train, apriori_remove)
+
+    transitions_ap = train_bigram(filtered_train_ap)
+    results_ap = evaluate(transitions_ap, test, filtered_train_ap)
+
+    print("Apriori Results:", results_ap)
+
+    # ==========================================================
+    # ===================== FP-GROWTH ==========================
+    # ==========================================================
     print("\n===== FP-GROWTH =====")
-    fp_rules, fp_time = run_fpgrowth(transactions, min_support=0.01)
-    print("FP-Growth Time:", fp_time)
+
+    fp_rules, fp_time = run_fpgrowth(
+        transactions,
+        min_support=0.01,
+        min_conf=0.3
+    )
 
     if fp_rules is not None:
         fp_remove = get_items_to_remove(fp_rules)
-        print("FP-Growth Items Removed:", len(fp_remove))
     else:
         fp_remove = set()
-        print("FP-Growth found no rules.")
 
-    print("\n===== RECOMMENDATION WITH FP-GROWTH FILTERING =====")
-    filtered_train = filter_sequences(train, fp_remove)
-    transitions = train_bigram(filtered_train)
-    results = evaluate(transitions, test, filtered_train)
+    print("FP-Growth Time:", round(fp_time, 4), "seconds")
+    print("FP-Growth Items Removed:", len(fp_remove))
 
-    print("Evaluation Results:", results)
+    filtered_train_fp = filter_sequences(train, fp_remove)
 
-    print("\n===== TIME COMPARISON =====")
-    print("Apriori Time:", apriori_time)
-    print("FP-Growth Time:", fp_time)
+    transitions_fp = train_bigram(filtered_train_fp)
+    results_fp = evaluate(transitions_fp, test, filtered_train_fp)
+
+    print("FP-Growth Results:", results_fp)
+
+    # ==========================================================
+    # ===================== SUMMARY ============================
+    # ==========================================================
+    print("\n===== FINAL COMPARISON =====")
+
+    print("\nBaseline:", baseline_results)
+    print("Apriori :", results_ap)
+    print("FP-Growth:", results_fp)
+
+    print("\nTime Comparison:")
+    print("Apriori Time:", round(apriori_time, 4), "seconds")
+    print("FP-Growth Time:", round(fp_time, 4), "seconds")
+
+    if apriori_time > 0:
+        speedup = apriori_time / fp_time if fp_time > 0 else np.inf
+        print("FP-Growth Speedup over Apriori:", round(speedup, 2), "x")

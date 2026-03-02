@@ -73,17 +73,16 @@ def run_fpgrowth(transactions, min_support=0.01, min_conf=0.3):
     return rules, exec_time
 
 
-def get_items_to_remove(rules):
-    """
-    Extract items that frequently appear in uninteresting rules
-    """
+def get_items_to_remove(rules, min_conf=0.6, min_lift=1.0):
+
     remove_items = set()
 
     for _, row in rules.iterrows():
-        for item in row["antecedents"]:
-            remove_items.add(item)
-        for item in row["consequents"]:
-            remove_items.add(item)
+
+        if row["confidence"] >= min_conf and row["lift"] >= min_lift:
+
+            for item in row["consequents"]:
+                remove_items.add(item)
 
     return remove_items
 

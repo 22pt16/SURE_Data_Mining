@@ -30,8 +30,8 @@ def evaluate(transitions, test_data, user_sequences, top_k=10):
         ndcg_scores.append(ndcg_at_k(ranked, true_item))
 
     return {
-        "MRR": np.mean(mrr_scores),
-        "nDCG": np.mean(ndcg_scores)
+        "MRR": float(round(np.mean(mrr_scores), 5)),
+        "nDCG": float(round(np.mean(ndcg_scores), 5))
     }
 
 

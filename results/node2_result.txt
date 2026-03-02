@@ -1,0 +1,50 @@
+===== LOADING DATA =====
+Loading dataset...
+Original shape: (100000, 4)
+Preprocessed shape: (100000, 5)
+Saved processed data.
+
+===== DATASET STATISTICS =====
+Total interactions: 100000
+Total users: 943
+Total items: 1682
+
+Avg interactions per user: 106.04
+Total uninteresting interactions: 17480
+Uninteresting ratio: 17.48 %
+
+Users after split: 943
+
+===== M1: BASELINE =====
+Baseline: {'MRR': 0.03295, 'nDCG': 0.04647} | Time: 0.0863 sec
+
+===== M2: APRIORI ONLY =====
+Apriori Rules: 404
+Items removed (Apriori): 16
+Apriori: {'MRR': 0.0344, 'nDCG': 0.04797} | Time: 2.0632 sec
+
+===== M3: FP-GROWTH ONLY =====
+FP Rules: 404
+Items removed (FP): 16
+FP-Growth: {'MRR': 0.0344, 'nDCG': 0.04797} | Time: 3.2722 sec
+
+===== APPLYING SSE =====
+Short users: 47 | 4.98 %
+Reverse training time: 0.058 seconds
+
+===== M4: SSE + APRIORI =====
+SSE + Apriori: {'MRR': 0.03535, 'nDCG': 0.04898} | Time: 0.0975 sec
+
+===== M5: SSE + FP-GROWTH =====
+SSE + Apriori: {'MRR': 0.03535, 'nDCG': 0.04898} | Time: 0.0915 sec
+
+================ FINAL SUMMARY ================
+M1 Baseline        | MRR: 0.03295 | nDCG: 0.04647 | Time: 0.0863s
+M2 Apriori Only    | MRR: 0.03440 | nDCG: 0.04797 | Time: 2.0632s
+M3 FP-Growth Only  | MRR: 0.03440 | nDCG: 0.04797 | Time: 3.2722s
+M4 SSE + Apriori   | MRR: 0.03535 | nDCG: 0.04898 | Time: 0.0975s
+M5 SSE + FP-Growth | MRR: 0.03535 | nDCG: 0.04898  | Time: 0.0915s
+
+Mining Time Comparison:
+Apriori Time: 1.9365
+FP-Growth Time: 3.1414

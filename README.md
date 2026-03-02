@@ -1,7 +1,26 @@
-SURE-Session-Recommendation
-Dataset: MovieLens 100K
-We replace Apriori with FP-Growth to improve scalability and eliminate candidate generation overhead. FP-Growth builds a compact FP-tree structure, reducing multiple database scans and improving rule mining efficiency.
+# SURE-Session-Recommendation
 
-Apriori repeatedly generates and prunes candidate itemsets, leading to combinatorial explosion. FP-Growth compresses transactions into an FP-tree structure and avoids candidate generation, reducing time complexity.
+Implementation and extension of:
 
-We implemented the core SURE framework for uninteresting item removal using association rule mining. Due to time constraints, instead of the transformer-based SASRec model, we used a lightweight bigram sequential model to evaluate the impact of filtering. This allows us to isolate the effect of association rule filtering on recommendation performance.
+**SURE: Session-Based Uninteresting Item Removal for Enhanced Recommendations**
+
+---
+
+## 📌 Project Overview
+
+This project implements the core idea of the SURE framework:
+
+1. Identify uninteresting (negative) items
+2. Apply Association Rule Mining (ARM)
+3. Remove noisy items from sequences
+4. Improve sequential recommendation performance
+
+Additionally, we extend the original paper by:
+
+- Comparing **Apriori vs FP-Growth**
+- Measuring computational efficiency
+- Evaluating with and without Short Sequence Enhancement (SSE)
+
+---
+
+## 📂 Project Structure

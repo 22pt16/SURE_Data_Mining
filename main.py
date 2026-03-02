@@ -1,142 +1,56 @@
+import time
 from src.preprocessing import load_and_preprocess
-from src.arm_filter import (
-    extract_uninteresting,
-    build_transactions,
-    run_fpgrowth,
-    run_apriori,
-    get_items_to_remove,
-    filter_sequences,
-)
-from src.recommender import train_bigram
-from src.evaluation import evaluate
-
-import numpy as np
-
-
-def simple_leave_one_out(df):
-    """
-    Temporary split for Person 2 branch.
-    Last interaction → test
-    Remaining → train
-    """
-
-    train = {}
-    test = {}
-
-    grouped = df.groupby("user_id")
-
-    for user, group in grouped:
-        items = group.sort_values("timestamp")["item_id"].tolist()
-
-        if len(items) < 2:
-            continue
-
-        train[user] = items[:-1]
-        test[user] = items[-1]
-
-    return train, test
-
+from src.split import leave_one_out_split, split_short_long
+from src.reverse_model import train_reverse_model, predict_prior_items
+from src.extension import extend_short_sequences
 
 if __name__ == "__main__":
-
     raw_path = "data/raw/u.data"
     processed_path = "data/processed/processed.csv"
 
-    print("\n===== LOADING & PREPROCESSING =====")
+    #Data Preprocessing
     df = load_and_preprocess(raw_path, processed_path)
+    print(df.head())
 
-    print("Total users:", df["user_id"].nunique())
-    print("Total items:", df["item_id"].nunique())
+    #User Sessions Split
+    train, val, test = leave_one_out_split(df)
 
-    # ----------------------------
-    # Train/Test Split
-    # ----------------------------
-    train, test = simple_leave_one_out(df)
-    print("Users after split:", len(train))
+    short_users, long_users = split_short_long(train, 5)
 
-    # ----------------------------
-    # BASELINE (NO FILTERING)
-    # ----------------------------
-    print("\n===== BASELINE (NO FILTERING) =====")
+    print("Total users:", len(train))
+    print("Short users:", len(short_users))
+    print("Long users:", len(long_users))
 
-    baseline_transitions = train_bigram(train)
-    baseline_results = evaluate(baseline_transitions, test, train)
+    #Extending Short Sequences
+    start = time.time()
+    reverse_model = train_reverse_model(long_users)
+    end = time.time()
 
-    print("Baseline Results:", baseline_results)
+    print("Reverse model training time:", end - start, "seconds")
+    print("\nReverse model trained for Short Sequence Extension.")
+    example_item = list(reverse_model.keys())[0]
+    print("\nExample reverse transitions for item:", example_item)
+    print("Backward Dependency:",reverse_model[example_item])
 
-    # ----------------------------
-    # Build Transactions
-    # ----------------------------
-    unf_dict = extract_uninteresting(df)
-    transactions = build_transactions(unf_dict)
+    enhanced_short = extend_short_sequences(short_users, reverse_model, k=2)
 
-    print("Total uninteresting transactions:", len(transactions))
+    #Example Comparison
+    example_user = list(short_users.keys())[0]
 
-    # ==========================================================
-    # ===================== APRIORI ============================
-    # ==========================================================
-    print("\n===== APRIORI =====")
+    print("\nExample\nOriginal short sequence:", short_users[example_user])
+    print("Enhanced short sequence:", enhanced_short[example_user])
 
-    apriori_rules, apriori_time = run_apriori(
-        transactions,
-        min_support=0.01,
-        min_conf=0.3
-    )
+    #Extension Impact Stats
+    total_before = sum(len(seq) for seq in short_users.values())
+    total_after = sum(len(seq) for seq in enhanced_short.values())
 
-    if apriori_rules is not None:
-        apriori_remove = get_items_to_remove(apriori_rules)
-    else:
-        apriori_remove = set()
+    print("\nOverall SSE Extension Impact Stats:")
+    print("Average short length before:", round(total_before / len(short_users)))
+    print("Average short length after:", round(total_after / len(short_users)))
 
-    print("Apriori Time:", round(apriori_time, 4), "seconds")
-    print("Apriori Items Removed:", len(apriori_remove))
+    #Pass to Forward Model for Prediction
+    combined_train = {}
+    combined_train.update(long_users)
+    combined_train.update(enhanced_short)
 
-    filtered_train_ap = filter_sequences(train, apriori_remove)
-
-    transitions_ap = train_bigram(filtered_train_ap)
-    results_ap = evaluate(transitions_ap, test, filtered_train_ap)
-
-    print("Apriori Results:", results_ap)
-
-    # ==========================================================
-    # ===================== FP-GROWTH ==========================
-    # ==========================================================
-    print("\n===== FP-GROWTH =====")
-
-    fp_rules, fp_time = run_fpgrowth(
-        transactions,
-        min_support=0.01,
-        min_conf=0.3
-    )
-
-    if fp_rules is not None:
-        fp_remove = get_items_to_remove(fp_rules)
-    else:
-        fp_remove = set()
-
-    print("FP-Growth Time:", round(fp_time, 4), "seconds")
-    print("FP-Growth Items Removed:", len(fp_remove))
-
-    filtered_train_fp = filter_sequences(train, fp_remove)
-
-    transitions_fp = train_bigram(filtered_train_fp)
-    results_fp = evaluate(transitions_fp, test, filtered_train_fp)
-
-    print("FP-Growth Results:", results_fp)
-
-    # ==========================================================
-    # ===================== SUMMARY ============================
-    # ==========================================================
-    print("\n===== FINAL COMPARISON =====")
-
-    print("\nBaseline:", baseline_results)
-    print("Apriori :", results_ap)
-    print("FP-Growth:", results_fp)
-
-    print("\nTime Comparison:")
-    print("Apriori Time:", round(apriori_time, 4), "seconds")
-    print("FP-Growth Time:", round(fp_time, 4), "seconds")
-
-    if apriori_time > 0:
-        speedup = apriori_time / fp_time if fp_time > 0 else np.inf
-        print("FP-Growth Speedup over Apriori:", round(speedup, 2), "x")
+    print("Combined training users:", len(combined_train))

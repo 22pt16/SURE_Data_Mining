@@ -2,6 +2,7 @@ from src.preprocessing import load_and_preprocess
 from src.split import leave_one_out_split, split_short_long
 from src.reverse_model import train_reverse_model
 from src.extension import extend_short_sequences
+from src.spm import extract_sequential_patterns, get_spm_items_to_remove
 
 from src.arm_filter import (
     extract_uninteresting,
@@ -68,11 +69,21 @@ if __name__ == "__main__":
 
     unf_dict = extract_uninteresting(df)
     transactions = build_transactions(unf_dict)
-
     start = time.time()
+   
+    # ================= SPM-lite =================
+    spm_patterns = extract_sequential_patterns(unf_dict)
+
+    print("\nSPM Patterns Found:", len(spm_patterns))
+
+    spm_remove = get_spm_items_to_remove(spm_patterns)
+
+    print("Items removed (SPM):", len(spm_remove))
+
 
     apriori_rules, apriori_time = run_apriori(transactions, min_support=0.01)
     apriori_remove = get_items_to_remove(apriori_rules) if apriori_rules is not None else set()
+    combined_remove = apriori_remove.union(spm_remove)
 
     if apriori_rules is not None:
         print("Apriori Rules:", len(apriori_rules))
@@ -162,6 +173,23 @@ if __name__ == "__main__":
     print("SSE + Apriori:", results_sse_fp, "| Time:", round(sse_fp_time, 4), "sec")
 
     # ==========================================================
+    # ================= M6: SSE + ARM + SPM =====================
+    # ==========================================================
+    print("\n===== M6: SSE + ARM + SPM =====")
+
+    start = time.time()
+
+    filtered_train_sse_spm = filter_sequences(train_sse, combined_remove)
+
+    transitions_sse_spm = train_bigram(filtered_train_sse_spm)
+    results_sse_spm = evaluate(transitions_sse_spm, test, filtered_train_sse_spm)
+
+    end = time.time()
+    sse_spm_time = end - start
+
+    print("SSE + ARM + SPM:", results_sse_spm,
+        "| Time:", round(sse_spm_time, 4), "sec")
+    # ==========================================================
     # ===================== SUMMARY ============================
     # ==========================================================
     print("\n================ FINAL SUMMARY ================")
@@ -180,6 +208,9 @@ if __name__ == "__main__":
 
     print(f"M5 SSE + FP-Growth | MRR: {results_sse_fp['MRR']:.5f} | "
         f"nDCG: {results_sse_fp['nDCG']:.5f}  | Time: {sse_fp_time:.4f}s")
+    
+    print(f"M6 SSE + ARM + SPM | MRR: {results_sse_spm['MRR']:.5f} | "
+      f"nDCG: {results_sse_spm['nDCG']:.5f} | Time: {sse_spm_time:.4f}s")
 
     print("\nMining Time Comparison:")
 
@@ -215,6 +246,10 @@ if __name__ == "__main__":
 
     print(f"\nnDCG Improvement (Apriori vs Baseline): {imp_ndcg_ap_over_base:.2f}%")
     print(f"nDCG Improvement (SSE + Apriori vs Baseline): {imp_ndcg_sse_ap_over_base:.2f}%")
+    imp_sse_spm_over_base = ((results_sse_spm['MRR'] - results_base['MRR'])
+                         / results_base['MRR']) * 100
+
+    print(f"Improvement (SSE + ARM + SPM vs Baseline): {imp_sse_spm_over_base:.2f}%")
 
     # ==========================================================
     # ================= EFFICIENCY ANALYSIS ====================
@@ -233,3 +268,13 @@ if __name__ == "__main__":
     print(f"Reverse Training Overhead: {sse_time:.4f} sec (negligible)")
     print(f"Total Pipeline Runtime (Best Model - SSE + Apriori): "
           f"{baseline_time + apriori_time + sse_time:.4f} sec (approx)")
+
+    print("\n================ ACCURACY vs FILTERING ================")
+
+    print(f"Baseline MRR: {results_base['MRR']:.5f}")
+    print(f"Apriori/FPgrowth MRR: {results_ap['MRR']:.5f}")
+    print(f"SSE+Apriori/FPgrowth MRR: {results_sse_ap['MRR']:.5f}")
+    print(f"SSE+ARM+SPM MRR: {results_sse_spm['MRR']:.5f}")
+
+    print("\nObservation:")
+    print("Moderate filtering improves accuracy, excessive filtering degrades performance.")

@@ -1,0 +1,80 @@
+===== LOADING DATA =====
+Loading dataset...
+Original shape: (100000, 4)
+Preprocessed shape: (100000, 5)
+Saved processed data.
+
+===== DATASET STATISTICS =====
+Total interactions: 100000
+Total users: 943
+Total items: 1682
+
+Avg interactions per user: 106.04
+Total uninteresting interactions: 17480
+Uninteresting ratio: 17.48 %
+
+Users after split: 943
+
+===== M1: BASELINE =====
+Baseline: {'MRR': 0.03295, 'nDCG': 0.04647} | Time: 0.09 sec
+
+===== M2: APRIORI ONLY =====
+
+SPM Patterns Found: 14
+Items removed (SPM): 8
+Apriori Rules: 404
+Items removed (Apriori): 16
+Apriori: {'MRR': 0.0344, 'nDCG': 0.04797} | Time: 1.7334 sec
+
+===== M3: FP-GROWTH ONLY =====
+FP Rules: 404
+Items removed (FP): 16
+FP-Growth: {'MRR': 0.0344, 'nDCG': 0.04797} | Time: 0.5746 sec
+
+===== APPLYING SSE =====
+Short users: 47 | 4.98 %
+Reverse training time: 0.0695 seconds
+
+===== M4: SSE + APRIORI =====
+SSE + Apriori: {'MRR': 0.03535, 'nDCG': 0.04898} | Time: 0.0984 sec
+
+===== M5: SSE + FP-GROWTH =====
+SSE + Apriori: {'MRR': 0.03535, 'nDCG': 0.04898} | Time: 0.1004 sec
+
+===== M6: SSE + ARM + SPM =====
+SSE + ARM + SPM: {'MRR': 0.03496, 'nDCG': 0.04912} | Time: 0.0931 sec
+
+================ FINAL SUMMARY ================
+M1 Baseline        | MRR: 0.03295 | nDCG: 0.04647 | Time: 0.0900s
+M2 Apriori Only    | MRR: 0.03440 | nDCG: 0.04797 | Time: 1.7334s
+M3 FP-Growth Only  | MRR: 0.03440 | nDCG: 0.04797 | Time: 0.5746s
+M4 SSE + Apriori   | MRR: 0.03535 | nDCG: 0.04898 | Time: 0.0984s
+M5 SSE + FP-Growth | MRR: 0.03535 | nDCG: 0.04898  | Time: 0.1004s
+M6 SSE + ARM + SPM | MRR: 0.03496 | nDCG: 0.04912 | Time: 0.0931s
+
+Mining Time Comparison:
+Apriori Time: 1.5108
+FP-Growth Time: 0.3493
+
+================ PERFORMANCE ANALYSIS ================
+Improvement (Apriori vs Baseline): 4.40%
+Improvement (SSE + Apriori vs Baseline): 7.28%
+Additional Gain from SSE over Apriori: 2.76%
+
+nDCG Improvement (Apriori vs Baseline): 3.23%
+nDCG Improvement (SSE + Apriori vs Baseline): 5.40%
+Improvement (SSE + ARM + SPM vs Baseline): 6.10%
+
+================ EFFICIENCY ANALYSIS ================
+FP-Growth is 4.33x faster than Apriori (mining phase).
+Reverse Training Overhead: 0.0695 sec (negligible)
+Total Pipeline Runtime (Best Model - SSE + Apriori): 1.6704 sec (approx)
+
+================ ACCURACY vs FILTERING ================
+Baseline MRR: 0.03295
+Apriori/FPgrowth MRR: 0.03440
+SSE+Apriori/FPgrowth MRR: 0.03535
+SSE+ARM+SPM MRR: 0.03496
+
+Observation:
+Moderate filtering improves accuracy, excessive filtering degrades performance.
